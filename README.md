@@ -17,10 +17,13 @@ L’instance Concentrix en production **n’a pas été modifiée**.
 
 Prérequis : Docker.
 
+## Démarrage (le plus simple)
+
+Prérequis : Docker.
+
 ```bash
-git clone <URL_DU_REPO>
+git clone https://github.com/BenJelloun-Youne/module-enregistrements-audio.git
 cd module-enregistrements-audio
-cp backend/env.example backend/.env   # optionnel, pour lancer sans Docker
 docker compose up --build
 ```
 
