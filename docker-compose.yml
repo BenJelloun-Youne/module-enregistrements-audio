@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: audio
+      POSTGRES_PASSWORD: audio
+      POSTGRES_DB: audio_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - audio_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U audio -d audio_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - backend/env.example
+    environment:
+      DATABASE_URL: postgresql+psycopg2://audio:audio@postgres:5432/audio_db
+      FRONTEND_STATIC_DIR: /frontend
+      AUDIO_STORAGE_DIR: /data/audio
+      PORT: "8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - audio_mp3:/data/audio
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  audio_pgdata:
+  audio_mp3:

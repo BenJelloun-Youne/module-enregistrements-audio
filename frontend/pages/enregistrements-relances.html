@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enregistrements et relances — Concentrix</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/js/tailwind-init.js"></script>
+    <link rel="stylesheet" href="/css/style.css?v=20">
+    <link rel="stylesheet" href="/css/sidebar-nav.css?v=10">
+    <link rel="stylesheet" href="/css/rpc-executive.css?v=16">
+    <link rel="stylesheet" href="/css/reactivation-sc.css?v=12">
+</head>
+<body class="app-page rpc-executive-page">
+    <header class="app-header nav" aria-hidden="true"></header>
+
+    <main class="sc-reactivation" id="erRoot">
+        <div class="sc-content">
+            <div id="erFlash" class="hidden" style="margin-bottom:10px;border-radius:10px;border:1px solid #bbf7d0;background:#effdf4;padding:8px 12px;font-size:13px;" role="status"></div>
+
+            <div class="sc-hero">
+                <div>
+                    <p class="sc-eyebrow">Smart Convers × <strong>Concentrix</strong></p>
+                    <h1 class="sc-h1">Enregistrements &amp; relances</h1>
+                    <div class="sc-hero-actions">
+                        <span class="sc-pill sc-pill--live">Données live Twilio + IA</span>
+                        <span class="sc-pill" id="erPeriod">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sc-controls">
+                <div class="sc-filters">
+                    <div class="sc-fld">
+                        <label for="erWeek">Semaine</label>
+                        <select id="erWeek" class="sc-sel"><option value="all">Toutes les semaines</option></select>
+                    </div>
+                    <div class="sc-fld">
+                        <label for="erFournisseur">Fournisseur</label>
+                        <select id="erFournisseur" class="sc-sel" disabled>
+                            <option>Concentrix</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="sc-toolbar" style="margin-bottom:0">
+                    <button type="button" class="btn btn-primary" id="erSyncBtn">Synchroniser Twilio</button>
+                    <button type="button" class="btn" id="erRefreshBtn">Rafraîchir KPI</button>
+                    <a class="btn" href="/pages/criteres-analyse-audio.html?v=3">Critères d'analyse</a>
+                </div>
+            </div>
+
+            <div id="erBody" class="sc-loading">Chargement du dashboard…</div>
+        </div>
+    </main>
+
+    <script src="/js/sidebar-nav.js?v=1"></script>
+    <script src="/js/app.js?v=1"></script>
+    <script src="/js/enregistrements-relances.js?v=11"></script>
+</body>
+</html>

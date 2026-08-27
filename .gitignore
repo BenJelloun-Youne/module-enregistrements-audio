@@ -1,0 +1,11 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+.env.local
+backend/.env
+backend/data/audio/
+*.mp3
+.pytest_cache/
+.DS_Store
