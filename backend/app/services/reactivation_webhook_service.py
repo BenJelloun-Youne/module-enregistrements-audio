@@ -26,7 +26,13 @@ _PHONE_KEYS = (
     "numero_tel",
     "mobilePhone",
 )
-_LEAD_ID_KEYS = ("leadId", "lead_id", "leadID", "LeadId", "lead_external_id")
+_LEAD_ID_KEYS = (
+    "leadId", "lead_id", "leadID", "LeadId", "lead_external_id",
+    # CRM crm.workflow.event (top-level + execution.generatedLeadDataId via sub-object lookup)
+    "generatedLeadDataId",
+    # Hopti sms.success
+    "deliveryId",
+)
 _CAMPAIGN_KEYS = ("campaignId", "campaign_id", "campaignID", "CampaignId")
 _SUPPLIER_KEYS = ("supplierId", "supplier_id", "brokerId", "broker_id", "SupplierId")
 _STATUS_KEYS = ("statusId", "status_id", "status", "StatusId")
@@ -77,19 +83,47 @@ def extract_lead_fields(payload: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {}
     cands = _candidates(payload)
+
+    # --- lead_external_id ---
     lead_id = _try_int(_pick(cands, _LEAD_ID_KEYS))
+    if lead_id is None:
+        # CRM crm.workflow.event : execution.generatedLeadDataId
+        execution = payload.get("execution")
+        if isinstance(execution, dict):
+            lead_id = _try_int(execution.get("generatedLeadDataId"))
+        # CRM : lead.dataId
+        if lead_id is None:
+            lead_obj = payload.get("lead")
+            if isinstance(lead_obj, dict):
+                lead_id = _try_int(lead_obj.get("dataId"))
     if lead_id is None and "event" not in payload:
         lead_id = _try_int(_pick(cands, ("id", "ID")))
+
+    # --- phone ---
     phone = _norm_phone(_pick(cands, _PHONE_KEYS))
+    if not phone:
+        # CRM : individual.phone / individual.telephone
+        individual = payload.get("individual")
+        if isinstance(individual, dict):
+            phone = _norm_phone(_pick([individual], _PHONE_KEYS))
     if not phone:
         inner = payload.get("payload") if isinstance(payload.get("payload"), dict) else {}
         data = inner.get("data") if isinstance(inner, dict) else payload.get("data")
         if isinstance(data, dict):
             phone = _norm_phone(data.get("12") or data.get(12))
+
+    # --- campaign_external_id ---
+    campaign_id = _try_int(_pick(cands, _CAMPAIGN_KEYS))
+    if campaign_id is None:
+        # CRM : campaign.internalId
+        campaign = payload.get("campaign")
+        if isinstance(campaign, dict):
+            campaign_id = _try_int(campaign.get("internalId"))
+
     return {
         "lead_external_id": lead_id,
         "phone": phone,
-        "campaign_external_id": _try_int(_pick(cands, _CAMPAIGN_KEYS)),
+        "campaign_external_id": campaign_id,
         "supplier_external_id": _try_int(_pick(cands, _SUPPLIER_KEYS)),
         "status_id": _try_int(_pick(cands, _STATUS_KEYS)),
     }

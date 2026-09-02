@@ -51,12 +51,50 @@ POST /api/webhooks/twilio/recording?token=$TWILIO_WEBHOOK_TOKEN
 → 200 texte "ok" immédiat, ingest + analyse en background
 ```
 
-Réactivation JSON :
+Réactivation — même endpoint, deux formats acceptés :
 
 ```
 POST /api/webhooks-reactivation?token=$REACTIVATION_WEBHOOK_TOKEN
-     { ...lead }  ou  { "leads": [ ... ] }
-→ 201 { stored, created, updated, ids }
+POST /api/webhooks-reactivation/{source}?token=$REACTIVATION_WEBHOOK_TOKEN
 ```
 
 Token aussi accepté en header `X-Webhook-Token` ou `Authorization: Bearer`.
+
+**1. Legacy JSON direct** (comportement historique) :
+
+```
+body: { ...lead }  ou  [ ...leads ]  ou  { "leads": [...] }
+→ 201 { stored, created, updated, ids }
+→ table reactivation_leads, source = path param ou "default"
+```
+
+**2. Push Pub/Sub GCP** (subscribers CRM + Hopti) :
+
+Les subscriptions push pointent vers la même URL avec `?token=` dans l'endpoint GCP.
+
+```json
+{
+  "message": {
+    "data": "<base64(JSON métier)>",
+    "attributes": { "X-Hipto-Event": "sms.success", "X-Hipto-Customer-Id": "..." },
+    "messageId": "...",
+    "publishTime": "..."
+  },
+  "subscription": "projects/.../subscriptions/..."
+}
+→ 204  (ACK Pub/Sub — pas de retry)
+→ table reactivation_leads
+```
+
+| Événement | Source publieur | `source` stocké |
+|-----------|-----------------|-----------------|
+| `crm.workflow.event` | CRM — step SEND_WEBHOOK / SEND_SMS | `crm` |
+| `sms.success` | Hopti — welcome SMS accepté | `hopti` |
+
+Codes retour Pub/Sub :
+
+| Cas | HTTP |
+|-----|------|
+| Message traité (nouveau) | **204** |
+| Enveloppe base64/JSON invalide | **400** (poison message, pas de retry) |
+| Erreur DB transitoire | **500** (retry subscription) |
