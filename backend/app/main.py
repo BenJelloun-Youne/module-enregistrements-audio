@@ -16,6 +16,7 @@ from app import models  # noqa: F401, E402
 from app import models_audio  # noqa: F401, E402
 from app.routers import admin_enregistrements  # noqa: E402
 from app.routers import auth  # noqa: E402
+from app.routers import webhooks_qualification  # noqa: E402
 from app.routers import webhooks_reactivation  # noqa: E402
 from app.routers import webhooks_twilio  # noqa: E402
 from app.services.audio_seed import ensure_audio_config_seed  # noqa: E402
@@ -49,6 +50,7 @@ app.include_router(auth.router)
 app.include_router(admin_enregistrements.router)
 app.include_router(webhooks_twilio.router)
 app.include_router(webhooks_reactivation.router)
+app.include_router(webhooks_qualification.router)
 
 _default_static = Path(__file__).resolve().parents[2] / "frontend"
 _static_env = os.getenv("FRONTEND_STATIC_DIR", "").strip()
@@ -73,6 +75,7 @@ def api_root():
         "webhooks": [
             "/api/webhooks/twilio/recording",
             "/api/webhooks-reactivation",
+            "/api/webhooks-qualification",
         ],
     }
 
