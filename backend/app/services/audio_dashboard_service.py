@@ -8,11 +8,11 @@ from typing import Any, Optional
 from sqlalchemy.orm import Session, joinedload
 
 from app.models_audio import AudioRecording
+from app.services.qualification_webhook_service import get_vente_phones
 from app.services.reactivation_webhook_notify import list_reactivation_calls
 from app.services.reactivation_webhook_service import count_reactivation_leads
 
 CONV = {"Vente", "Pre-vente", "Refus", "Deja Orange", "Rappel perso", "Probleme fiche"}
-VENTE_CODIFS = {"Vente"}
 
 
 def _pc1(a: int, b: int) -> str:
@@ -57,6 +57,8 @@ def build_dashboard_payload(db: Session, week: Optional[str] = None) -> dict[str
         .all()
     )
 
+    vente_phones = get_vente_phones(db)
+
     byday: dict[str, dict[str, int]] = defaultdict(lambda: {"liv": 0, "joi": 0, "ven": 0})
     ours_map: dict[str, dict[str, Any]] = {}
     recordings_meta: list[dict[str, Any]] = []
@@ -85,12 +87,10 @@ def build_dashboard_payload(db: Session, week: Optional[str] = None) -> dict[str
         )
 
         is_joint = False
-        is_vente = False
+        is_vente = phone in vente_phones
         if a:
             if (a.codification or "") in CONV:
                 is_joint = True
-            if a.vente_conclue is True or (a.codification or "") in VENTE_CODIFS:
-                is_vente = True
             crit = a.criteres_result if isinstance(a.criteres_result, dict) else {}
             if crit:
                 criteres.append(
