@@ -412,63 +412,31 @@
   overflow: hidden;
   isolation: isolate;
   transition: transform 0.25s ease;
-  animation: scTrapGlow 3.2s ease-in-out infinite;
+  box-shadow: 0 4px 14px -6px rgba(46, 105, 255, 0.25);
 }
 .sc-funnel-step:nth-child(1) .sc-funnel-trap {
   --funnel-w: 100%;
-  background: linear-gradient(120deg, #6d28d9, #7c3aed, #a78bfa, #7c3aed, #6d28d9);
-  background-size: 220% 220%;
-  animation: scTrapGlow 3.2s ease-in-out infinite, scLiquid 5.5s ease infinite;
+  background: linear-gradient(135deg, #6d28d9, #7c3aed);
   clip-path: polygon(0 0, 100% 0, 94% 100%, 6% 100%);
 }
 .sc-funnel-step:nth-child(3) .sc-funnel-trap {
   --funnel-w: 84%;
-  background: linear-gradient(120deg, #1f50d6, #2E69FF, #5b8cff, #2E69FF, #1f50d6);
-  background-size: 220% 220%;
-  animation: scTrapGlow 3.2s ease-in-out 0.25s infinite, scLiquid 5.5s ease 0.25s infinite;
+  background: linear-gradient(135deg, #1f50d6, #2E69FF);
   clip-path: polygon(3% 0, 97% 0, 91% 100%, 9% 100%);
 }
 .sc-funnel-step:nth-child(5) .sc-funnel-trap {
   --funnel-w: 68%;
-  background: linear-gradient(120deg, #0284c7, #0EA5E9, #38BDF8, #0EA5E9, #0284c7);
-  background-size: 220% 220%;
-  animation: scTrapGlow 3.2s ease-in-out 0.5s infinite, scLiquid 5.5s ease 0.5s infinite;
+  background: linear-gradient(135deg, #0284c7, #0EA5E9);
   clip-path: polygon(6% 0, 94% 0, 86% 100%, 14% 100%);
 }
 .sc-funnel-step:nth-child(7) .sc-funnel-trap {
   --funnel-w: 52%;
-  background: linear-gradient(120deg, #15803d, #16a34a, #4ade80, #16a34a, #15803d);
-  background-size: 220% 220%;
-  animation: scTrapGlow 3.2s ease-in-out 0.8s infinite, scLiquid 5.5s ease 0.8s infinite;
+  background: linear-gradient(135deg, #15803d, #16a34a);
   clip-path: polygon(10% 0, 90% 0, 80% 100%, 20% 100%);
 }
-.sc-funnel-trap::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    105deg,
-    transparent 15%,
-    rgba(255, 255, 255, 0.12) 35%,
-    rgba(255, 255, 255, 0.55) 50%,
-    rgba(255, 255, 255, 0.12) 65%,
-    transparent 85%
-  );
-  background-size: 200% 100%;
-  animation: scShimmer 2.1s linear infinite;
-  pointer-events: none;
-  z-index: 0;
-}
+.sc-funnel-trap::before,
 .sc-funnel-trap::after {
-  content: "";
-  position: absolute;
-  left: 12%;
-  right: 12%;
-  bottom: 0;
-  height: 45%;
-  background: linear-gradient(to top, rgba(255, 255, 255, 0.16), transparent);
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 .sc-funnel-trap:hover {
   transform: translateY(-2px) scale(1.02);
@@ -507,7 +475,6 @@
   font-weight: 850;
   letter-spacing: -0.03em;
   line-height: 1.05;
-  animation: scCountGlow 3.5s ease-in-out infinite;
 }
 
 .sc-funnel-bridge {
@@ -625,12 +592,7 @@
   overflow: hidden;
 }
 .sc-funnel-metric__bar > span::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
-  background-size: 200% 100%;
-  animation: scShimmer 2.2s linear infinite;
+  display: none;
 }
 .sc-funnel-metric:nth-child(2) .sc-funnel-metric__bar > span {
   background: linear-gradient(90deg, var(--sc-brand), #5b8cff);

@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from sqlalchemy.orm import Session, joinedload
 
-from app.models_audio import AudioRecording
+from app.models_audio import AudioRecording, ReactivationLead
 from app.services.reactivation_webhook_notify import list_reactivation_calls
 from app.services.reactivation_webhook_service import count_reactivation_leads
 
@@ -49,6 +49,72 @@ def _week_label(monday: str, dmin: str, dmax: str) -> str:
     return f"{s.day} {mois.get(sm, sm)} – {e.day} {mois.get(em, em)}"
 
 
+def _fmt_dt(value: datetime | None) -> str:
+    if not value:
+        return ""
+    dt = value.astimezone() if value.tzinfo else value
+    return dt.strftime("%Y-%m-%d %H:%M")
+
+
+def _pick_payload_field(payload: dict[str, Any], keys: tuple[str, ...]) -> str:
+    cands: list[dict[str, Any]] = [payload]
+    for key in ("payload", "lead", "data", "event", "Lead", "Data", "Payload"):
+        sub = payload.get(key)
+        if isinstance(sub, dict):
+            cands.append(sub)
+            nested = sub.get("data")
+            if isinstance(nested, dict):
+                cands.append(nested)
+    for c in cands:
+        for k in keys:
+            val = c.get(k)
+            if val not in (None, ""):
+                return str(val).strip()
+    return ""
+
+
+def _lead_identity_by_phone(db: Session) -> dict[str, dict[str, str]]:
+    out: dict[str, dict[str, str]] = {}
+    leads = db.query(ReactivationLead).order_by(ReactivationLead.received_at.asc()).all()
+    for lead in leads:
+        phone = (lead.phone or "").strip()
+        if not phone:
+            continue
+        payload = lead.payload if isinstance(lead.payload, dict) else {}
+        nom = _pick_payload_field(payload, ("nom", "lastname", "lastName", "Nom", "name"))
+        prenom = _pick_payload_field(payload, ("prenom", "firstname", "firstName", "Prenom", "given_name"))
+        if nom or prenom:
+            out[phone] = {"nom": nom, "prenom": prenom}
+    return out
+
+
+def _append_hist(hist: str, entry: str) -> str:
+    if not entry:
+        return hist
+    if not hist:
+        return entry
+    if entry in hist.split(" | "):
+        return hist
+    return f"{hist} | {entry}"
+
+
+def _finalize_analyse_row(ar: dict[str, Any]) -> None:
+    calls: list[dict[str, str]] = ar.pop("_calls", [])
+    calls.sort(key=lambda c: c.get("dt") or "")
+    if calls:
+        ar["appel1"] = calls[0].get("dt") or ""
+        ar["resume1"] = calls[0].get("resume") or ar.get("resume1") or ""
+        ar["date_dernier_appel"] = calls[-1].get("dt") or ar.get("date_dernier_appel") or ""
+        ar["date_derniere_codif_sc"] = calls[-1].get("dt") or ""
+        if len(calls) > 1:
+            ar["appel2"] = calls[1].get("dt") or ""
+            ar["resume2"] = calls[1].get("resume") or ar.get("resume2") or ""
+    ar["nb_codif_sc"] = len([c for c in calls if c.get("codif") and c["codif"] != "?"])
+    if not ar.get("nb_codif_cc"):
+        hist_cc = ar.get("hist_cc") or ""
+        ar["nb_codif_cc"] = len([p for p in hist_cc.split(" | ") if p.strip()]) if hist_cc else 0
+
+
 def build_dashboard_payload(db: Session, week: Optional[str] = None) -> dict[str, Any]:
     rows = (
         db.query(AudioRecording)
@@ -62,9 +128,11 @@ def build_dashboard_payload(db: Session, week: Optional[str] = None) -> dict[str
     recordings_meta: list[dict[str, Any]] = []
     criteres: list[dict[str, Any]] = []
     analyse_rows_map: dict[str, dict[str, Any]] = {}
+    lead_identity = _lead_identity_by_phone(db)
 
     for r in rows:
         day = ""
+        dt_str = _fmt_dt(r.recorded_at)
         if r.recorded_at:
             day = r.recorded_at.astimezone().strftime("%Y-%m-%d") if r.recorded_at.tzinfo else r.recorded_at.strftime("%Y-%m-%d")
         phone = (r.phone or "").strip() or f"sid:{r.recording_sid}"
@@ -131,32 +199,46 @@ def build_dashboard_payload(db: Session, week: Optional[str] = None) -> dict[str
             o["vap"] = 1  # sans CRM : vente audio = vente attribuable
 
         ar = analyse_rows_map.get(phone)
+        identity = lead_identity.get(phone, {})
         if not ar:
             ar = {
                 "ph": phone,
+                "nom": identity.get("nom") or "",
+                "prenom": identity.get("prenom") or "",
                 "vente_cc": False,
                 "joint": False,
                 "canal": "welcome",
                 "date_1er": day,
                 "nb_enreg": 0,
+                "nb_codif_cc": 0,
+                "nb_codif_sc": 0,
                 "semaine": _week_of(day) or "",
                 "derniere_codif_cc": "",
                 "date_derniere_codif_cc": "",
                 "derniere_codif_sc": codif,
-                "date_dernier_appel": day,
+                "date_derniere_codif_sc": dt_str,
+                "date_dernier_appel": dt_str or day,
                 "hist_cc": "",
-                "hist_sc": codif,
+                "hist_sc": "",
+                "appel1": "",
+                "appel2": "",
                 "resume1": (a.deroule if a else "") or "",
                 "resume2": "",
                 "resume3": "",
+                "_calls": [],
             }
             analyse_rows_map[phone] = ar
+        if identity.get("nom"):
+            ar["nom"] = identity["nom"]
+        if identity.get("prenom"):
+            ar["prenom"] = identity["prenom"]
         ar["nb_enreg"] += 1
         if day and (not ar["date_1er"] or day < ar["date_1er"]):
             ar["date_1er"] = day
             ar["semaine"] = _week_of(day) or ""
-        if day and (not ar["date_dernier_appel"] or day >= ar["date_dernier_appel"]):
-            ar["date_dernier_appel"] = day
+        if dt_str and (not ar["date_dernier_appel"] or dt_str >= ar["date_dernier_appel"]):
+            ar["date_dernier_appel"] = dt_str
+            ar["date_derniere_codif_sc"] = dt_str
             ar["derniere_codif_sc"] = codif
             if a and a.deroule:
                 ar["resume1"] = a.deroule
@@ -164,9 +246,18 @@ def build_dashboard_payload(db: Session, week: Optional[str] = None) -> dict[str
             ar["joint"] = True
         if is_vente:
             ar["vente_cc"] = True
-        hist = ar.get("hist_sc") or ""
-        if codif and codif != "?" and codif not in hist.split(" | "):
-            ar["hist_sc"] = (hist + " | " + codif).strip(" |") if hist else codif
+        hist_entry = f"{dt_str} — {codif}" if dt_str and codif and codif != "?" else (codif if codif != "?" else "")
+        ar["hist_sc"] = _append_hist(ar.get("hist_sc") or "", hist_entry)
+        ar["_calls"].append(
+            {
+                "dt": dt_str or day,
+                "resume": (a.deroule if a else "") or "",
+                "codif": codif,
+            }
+        )
+
+    for ar in analyse_rows_map.values():
+        _finalize_analyse_row(ar)
 
     # byday depuis ours
     for o in ours_map.values():
