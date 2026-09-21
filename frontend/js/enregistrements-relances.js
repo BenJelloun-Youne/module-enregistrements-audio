@@ -22,6 +22,52 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
     }
+    function dash(v) {
+        return v == null || v === '' ? '—' : v;
+    }
+
+    var ANALYSE_COLS = [
+        'Date/heure dernière codification CC',
+        'Date/heure dernière appel hipto',
+        'Téléphone',
+        'Nom',
+        'Prénom',
+        '# codification CC',
+        '# appel numéro hipto',
+        'dernière codification CC',
+        'dernière codification hipto',
+        'historique codification CC (avec date/heure)',
+        'historique codification hipto (avec date/heure)',
+        'Appel #1',
+        'Résumé #1',
+        'Appel #2',
+        'Résumé #2'
+    ];
+    var ANALYSE_FIELDS = [
+        'date_derniere_codif_cc',
+        'date_dernier_appel',
+        'ph',
+        'nom',
+        'prenom',
+        'nb_codif_cc',
+        'nb_enreg',
+        'derniere_codif_cc',
+        'derniere_codif_sc',
+        'hist_cc',
+        'hist_sc',
+        'appel1',
+        'resume1',
+        'appel2',
+        'resume2'
+    ];
+
+    function analyseCell(row, field) {
+        var v = row[field];
+        if (field === 'nb_codif_cc' || field === 'nb_enreg') return nb(v != null ? v : 0);
+        if (field === 'ph') return '<td class="font-mono">' + esc(dash(v)) + '</td>';
+        if (field === 'resume1' || field === 'resume2') return '<td>' + esc(dash(String(v || '').slice(0, 200))) + '</td>';
+        return '<td>' + esc(dash(v)) + '</td>';
+    }
     function flash(msg, isErr) {
         var el = document.getElementById('erFlash');
         if (!el) return;
@@ -189,29 +235,28 @@
         return (
             '<div class="sc-card sc-funnel">' +
             '<div class="sc-funnel-head">' +
-            '<div><h3 class="sc-funnel-title">Entonnoir</h3>' +
-            '<p class="sc-funnel-sub">Leads réactivés → appel → jointure → vente</p></div>' +
+            '<div><h3 class="sc-funnel-title">Notre dispositif</h3></div>' +
             '<span class="sc-funnel-badge">' + nb(v.called) + ' numéros</span>' +
             '</div>' +
             '<div class="sc-funnel-viz">' +
             '<div class="sc-funnel-stack">' +
             funnelStep(icoSms(), 'Leads réactivés', nb(v.leadsReactives)) +
             funnelBridge(callPct) +
-            funnelStep(icoPhone(), 'Ont appelé', nb(v.called)) +
+            funnelStep(icoPhone(), 'Ont rappelé', nb(v.called)) +
             funnelBridge(v.joinPct) +
-            funnelStep(icoJoin(), 'Joints', nb(v.joints)) +
+            funnelStep(icoJoin(), 'Pris en charge', nb(v.joints)) +
             funnelBridge(v.ventePct) +
             funnelStep(icoCart(), 'Ventes', nb(v.ventes)) +
             '</div>' +
             '<div class="sc-funnel-side">' +
             funnelMetric('Leads réactivés', '100', nb(v.leadsReactives) + ' via webhook', v.leadsReactives ? 'is-ok' : 'is-zero') +
-            funnelMetric('Leads qui ont appelé', callPct, nb(v.called) + ' sur ' + nb(v.leadsReactives), callCls) +
-            funnelMetric('Échange avec un agent', v.joinPct, nb(v.joints) + ' joints', joinCls) +
+            funnelMetric('Leads qui ont rappelé', callPct, nb(v.called) + ' sur ' + nb(v.leadsReactives), callCls) +
+            funnelMetric('Échange avec un agent', v.joinPct, nb(v.joints) + ' pris en charge', joinCls) +
             funnelMetric('Ventes confirmées', v.ventePct, nb(v.ventes) + ' ventes CC', venteCls) +
             '</div></div>' +
             '<div class="sc-nonpris"><div class="sc-np-ico">' + icoPhoneOff() + '</div>' +
             '<div><div class="sc-np-t">Leads non pris en charge</div>' +
-            '<div class="sc-np-s">Ont appelé sans échange abouti côté call center</div></div>' +
+            '<div class="sc-np-s">Ont rappelé sans échange abouti côté call center</div></div>' +
             '<div class="sc-np-n">' + nb(v.nonPris) + '</div></div>' +
             '</div>'
         );
@@ -222,10 +267,10 @@
         var gap = '<span class="sc-gap">à brancher (CRM)</span>';
         var html = '';
 
-        html += sect('#2E69FF', 'Campagne ' + v.fournisseur, 'impact global du dispositif');
+        html += sect('#2E69FF', 'Campagne ' + v.fournisseur);
         html += '<div class="sc-kpis">';
         html += kpi(icoPeople(), 'rgba(46,105,255,0.15)', '#2E69FF', 'Leads traités', nb(v.liv), 'Avec enregistrement Concentrix');
-        html += kpi(icoPhone(), 'rgba(14,165,233,0.12)', '#0284C7', 'Joignabilité', v.joiPct + '%', nb(v.joi) + ' leads joints');
+        html += kpi(icoPhone(), 'rgba(14,165,233,0.12)', '#0284C7', 'Joignabilité', v.joiPct + '%', nb(v.joi) + ' leads pris en charge');
         html += kpi(icoCart(), 'rgba(22,163,74,0.12)', '#16a34a', 'Ventes', nb(v.ven), v.tvPct + '% taux de vente');
         html += '</div>';
 
@@ -238,7 +283,7 @@
             v.incrJoi +
             ' pt</div><div class="sc-incr-x">' +
             nb(v.joints) +
-            ' joignables / ' +
+            ' pris en charge / ' +
             nb(v.liv) +
             ' traités</div></div>';
         html +=
@@ -251,7 +296,7 @@
             ' traités</div></div></div>';
         html += '</div>';
 
-        html += sect('#16a34a', 'Performance Call Center', 'transformation des leads · ' + nb(v.called) + ' numéros');
+        html += sect('#16a34a', 'Performance Call Center');
         html +=
             '<div class="sc-card sc-leads-banner"><span class="sc-leads-banner-title">Leads réactivés</span>' +
             '<span class="sc-leads-banner-sep">·</span>' +
@@ -315,12 +360,12 @@
         html += crit(
             pc1(v.nonPris, v.called),
             '#dc2626',
-            'Rebond / non pris en charge',
-            nb(v.nonPris) + ' leads sur ' + nb(v.called) + ' ont appelé sans échange abouti'
+            'Rebond mobile',
+            nb(v.nonPris) + ' leads sur ' + nb(v.called) + ' ont rappelé sans échange abouti'
         );
         html += '</div>';
 
-        html += sect('#2E69FF', 'Analyse des appels', 'codification × Concentrix');
+        html += sect('#2E69FF', 'Analyse des appels');
         html +=
             '<div class="sc-card"><div class="sc-card-h">Détail par numéro</div><div class="sc-card-s">Codification, dates, historiques et résumés</div>';
         html +=
@@ -328,37 +373,24 @@
             (v.analyseRows || []).length +
             ' numéros</span></button>';
         html += '<div class="sc-table-wrap"><table class="sc-data"><thead><tr>';
-        ['Téléphone', 'Joint', 'Vente', 'Nb enreg.', '1er contact', 'Dernier appel', 'Codif SC', 'Résumé'].forEach(function (h) {
+        ANALYSE_COLS.forEach(function (h) {
             html += '<th>' + h + '</th>';
         });
         html += '</tr></thead><tbody>';
         (v.analyseRows || []).slice(0, 100).forEach(function (row) {
-            html +=
-                '<tr><td class="font-mono">' +
-                esc(row.ph) +
-                '</td><td>' +
-                (row.joint ? 'oui' : 'non') +
-                '</td><td>' +
-                (row.vente_cc ? 'oui' : 'non') +
-                '</td><td>' +
-                nb(row.nb_enreg) +
-                '</td><td>' +
-                esc(row.date_1er || '—') +
-                '</td><td>' +
-                esc(row.date_dernier_appel || '—') +
-                '</td><td>' +
-                esc(row.derniere_codif_sc || '—') +
-                '</td><td>' +
-                esc((row.resume1 || '').slice(0, 160)) +
-                '</td></tr>';
+            html += '<tr>';
+            ANALYSE_FIELDS.forEach(function (field) {
+                html += analyseCell(row, field);
+            });
+            html += '</tr>';
         });
         if (!(v.analyseRows || []).length) {
-            html += '<tr><td colspan="8" style="color:#9aa3b2;padding:16px;">Aucun enregistrement analysé pour cette période. Synchronisez Twilio puis configurez les critères.</td></tr>';
+            html += '<tr><td colspan="' + ANALYSE_COLS.length + '" style="color:#9aa3b2;padding:16px;">Aucun enregistrement analysé pour cette période. Synchronisez Twilio puis configurez les critères.</td></tr>';
         }
         html += '</tbody></table></div>';
         html += '<div class="sc-card-foot">Source : Twilio + analyses locales Concentrix.</div></div>';
 
-        html += sect('#2E69FF', 'Vue PROD', 'pilotage interne');
+        html += sect('#2E69FF', 'Vue PROD');
         html += '<div class="sc-pgrid">';
         html += pcard(
             '① Réactivation — amont',
@@ -376,7 +408,7 @@
             prow('Enregistrements', nb(v.nRec), '#334155', '1 enregistrement = 1 appel capté') +
                 prow('Enregistrements ≥ 300s', nb(v.n300), '#0e7490', pc1(v.n300, v.nRec) + ' % ≥ 5 min') +
                 prow('Lead unique ayant appelé', nb(v.called), '#2E69FF', pc1(v.called, v.liv) + ' % des traités') +
-                prow('dont joints', nb(v.joints), '#15803d', pc1(v.joints, v.liv) + ' % des traités') +
+                prow('dont pris en charge', nb(v.joints), '#15803d', pc1(v.joints, v.liv) + ' % des traités') +
                 prow('Appelé ≥ 300s', nb(v.call300), '#0e7490', pc1(v.call300, v.called) + ' % des appelants') +
                 prow('Vente CC — numéro unique', nb(v.ventes), '#15803d', pc1(v.ventes, v.called) + ' % appelants')
         );
@@ -402,14 +434,14 @@
         );
         html += '</div>';
 
-        html += sect('#0EA5E9', 'Enregistrements bruts', 'Twilio en base');
+        html += sect('#0EA5E9', 'Enregistrements bruts');
         html += '<div class="sc-card"><div class="sc-table-wrap"><table class="sc-data"><thead><tr>';
         ['Date', 'Téléphone', 'Durée', 'Statut pipeline', 'Codif'].forEach(function (h) {
             html += '<th>' + h + '</th>';
         });
         html += '</tr></thead><tbody id="erRecBody"></tbody></table></div></div>';
 
-        html += sect('#7c3aed', 'Historique webhook réactivation', 'appels OK / échec');
+        html += sect('#7c3aed', 'Historique webhook réactivation');
         html +=
             '<div class="sc-card"><div class="sc-card-s">Chaque POST Databowl est journalisé. Alerte WhatsApp TextMeBot si OK ou échec.</div>';
         html += '<div class="sc-table-wrap"><table class="sc-data"><thead><tr>';
@@ -484,29 +516,14 @@
     }
 
     function downloadCsv(rows) {
-        var cols = [
-            'ph',
-            'vente_cc',
-            'joint',
-            'canal',
-            'date_1er',
-            'nb_enreg',
-            'semaine',
-            'derniere_codif_sc',
-            'date_dernier_appel',
-            'hist_sc',
-            'resume1'
-        ];
-        var lines = [cols.join(';')];
+        var lines = [ANALYSE_COLS.join(';')];
         rows.forEach(function (r) {
             lines.push(
-                cols
-                    .map(function (c) {
-                        var v = r[c];
-                        if (v == null) return '';
-                        return '"' + String(v).replace(/"/g, '""') + '"';
-                    })
-                    .join(';')
+                ANALYSE_FIELDS.map(function (field) {
+                    var v = r[field];
+                    if (v == null) return '';
+                    return '"' + String(v).replace(/"/g, '""') + '"';
+                }).join(';')
             );
         });
         var blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });

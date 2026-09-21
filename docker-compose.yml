@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: audio
       POSTGRES_DB: audio_db
     ports:
-      - "5433:5432"
+      - "${AUDIO_DB_PORT:-5431}:5432"
     volumes:
       - audio_pgdata:/var/lib/postgresql/data
     healthcheck:
